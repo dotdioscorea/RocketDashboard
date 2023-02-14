@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Data</title>
+    <!-- <link rel="stylesheet" href="styles.css"> -->
+  </head>
+  <body>
+    <header>
+      <h1>Data</h1>
+      <button id="reconnect-button" style="display: none;" onclick="ReconnectToServer()">Restore server connection</button>
+    </header>
+    <main>
+      <p>Server status: <span id="session-status"></span></p>
+      <div id="serial-selector">
+        <label for="serial-port-input">Serial Port:</label>
+        <select id="serial-port-input"></select>
+        <button id="connect-button" onclick="ConnectSerialPort();">Connect</button>
+        <button id="disconnect-button" style="display: none" onclick="DisconnectSerialPort();">Disconnect</button>
+        <button id="refresh-button" onclick="RefreshSerialPorts();">RefreshList</button>
+        <p id="serial-port-error-message" style="color:brown; display: none">error</p>
+        <p id="serial-port-live" style="color:rgb(0, 84, 28); display: none">serial port connected</p>
+      </div>
+      <div id="terminal">
+        <br>
+        <textarea style="width: 800px; height: 173px; resize: none;" id="raw-data" readonly></textarea>
+      </div>
+      <div id="data-wrapper" style="display: block;">
+        <div id="live-data">
+          <div id="chartContainer" style="height: 300px; width: 100%;"></div>
+        </div>
+        <div id="3d-plot">
+          <!-- Populated dynamically with JavaScript -->
+        </div>
+      </div>
+    </main>
+    <script src="https://canvasjs.com/assets/script/canvasjs.min.js"></script> 
+    <script src="script.js"></script>
+  </body>
+</html>
