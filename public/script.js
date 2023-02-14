@@ -1,7 +1,9 @@
 const selectElement = document.getElementById("serial-port-input");
 const errorElement = document.getElementById("serial-port-error-message");
 const connectElement = document.getElementById("serial-port-live");
+const maxAltitudeElement = document.getElementById("max-altitude");
 const connectButton = document.getElementById("connect-button");
+const pauseButton = document.getElementById("pause-button");
 const disconnectButton = document.getElementById("disconnect-button");
 const reconnectButton = document.getElementById("reconnect-button");
 const refreshButton = document.getElementById("refresh-button");
@@ -12,8 +14,9 @@ const dataDiv = document.getElementById("data-wrapper");
 ws = undefined;
 dataPoints = [];
 dataPointsCache = [];
+paused = false;
 
-const MAXDATAPOINTS = 100;
+const MAXDATAPOINTS = 200;
 const MAXMESSAGES = 10;
 const DATAPOINTCACHESIZE = 5;
 
@@ -38,19 +41,16 @@ let onclose = function onclose(err) {
 
 var chart = new CanvasJS.Chart("chartContainer", {
   exportEnabled: true,
-  title :{
-    text: "Sine wave"
-  },
   data: [{
     type: "spline",
     markerSize: 0,
     dataPoints: dataPoints 
   }]
-});  
+});
+chart.render();
 
 let onmessage = function onmessage(event) {
   const message = JSON.parse(event.data);
-  console.log(message.PUSH);
   switch (message.PUSH) {
     case "SERIALPORTS":
       while(selectElement.lastElementChild) {selectElement.removeChild(selectElement.lastChild)}
@@ -84,7 +84,8 @@ let onmessage = function onmessage(event) {
     break;  
     case "DATA":
       LogMessage(message.DATA.TIME, "Recieved data: " + message.DATA.VALUES);
-      PlotData(message.DATA.VALUES);
+      if (!paused)
+        PlotData(message.DATA.VALUES);
     break;  
   }
 };
@@ -93,7 +94,6 @@ function LogMessage(time, message) {
   let strings = rawDataElement.innerHTML.split('\n');
   if (strings.length > MAXMESSAGES) strings.shift();
   strings.push(time + message);
-  console.log(strings)
   rawDataElement.innerHTML = strings.join('\n').trimStart();
   rawDataElement.scrollTop = rawDataElement.scrollHeight;
 }
@@ -101,13 +101,16 @@ function LogMessage(time, message) {
 function PlotData(data) {
   data = data.split(",");
   data.forEach((value) => {if (parseFloat(value) == NaN) return}); //CHECK FOR INVALID LINES
-  dataPointsCache.push({ x: parseInt(data[0]), y: parseFloat(data[1])});
+  let value = { x: parseInt(data[0]), y: parseFloat(data[1])};
+  dataPointsCache.push(value);
+  if (parseInt(maxAltitudeElement.innerHTML) < value.y) maxAltitudeElement.innerHTML = value.y;
 
   if (dataPointsCache.length < DATAPOINTCACHESIZE) return; 
 
-  if (dataPoints.length > MAXDATAPOINTS - DATAPOINTCACHESIZE) dataPoints.shift(5);
+  while (dataPoints.length > MAXDATAPOINTS - DATAPOINTCACHESIZE) dataPoints.shift();
 
   dataPointsCache.forEach((value) => {dataPoints.push(value)});
+  dataPointsCache = [];
   chart.render();
 }
 
@@ -131,6 +134,24 @@ function RefreshSerialPorts() {
 
 function ClearErrorMessage() {
   errorElement.style.display = "none";
+}
+
+function ClearChart() {
+  dataPoints.length = 0;
+  dataPointsCache.length = 0;
+  chart.render();
+}
+
+function PauseChart() {
+  pauseButton.innerHTML = "Resume";
+  pauseButton.onclick = ResumeChart;
+  paused = true;
+}
+
+function ResumeChart() {
+  pauseButton.innerHTML = "Pause";
+  pauseButton.onclick = PauseChart;
+  paused = false;
 }
 
 function ShowErrorMessage(msg) {

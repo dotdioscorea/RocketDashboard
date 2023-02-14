@@ -25,9 +25,20 @@
         <br>
         <textarea style="width: 800px; height: 173px; resize: none;" id="raw-data" readonly></textarea>
       </div>
+      <br>
       <div id="data-wrapper" style="display: block;">
         <div id="live-data">
-          <div id="chartContainer" style="height: 300px; width: 100%;"></div>
+          <div id="chart">
+            <div id="chartContainer" style="height: 300px; width: 800px;"></div>
+            <button id="pause-button" onclick="PauseChart()">Pause</button>
+            <button style="display: inline;" id="clear-chart-button" onclick="ClearChart()">Clear</button>
+          </div>
+          <br>
+          <div>
+            <span>Max altitude: </span>
+            <textarea rows="1" id="max-altitude" READONLY style="width: 50px; resize: none;">0</textarea>
+            <span>m</span>
+          </div>
         </div>
         <div id="3d-plot">
           <!-- Populated dynamically with JavaScript -->
