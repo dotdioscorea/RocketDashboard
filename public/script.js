@@ -2,8 +2,18 @@ const selectElement = document.getElementById("serial-port-input");
 const errorElement = document.getElementById("serial-port-error-message");
 const connectElement = document.getElementById("serial-port-live");
 const maxAltitudeElement = document.getElementById("max-altitude");
+const displacementXElement = document.getElementById("displacement-x");
+const displacementYElement = document.getElementById("displacement-y");
+const displacementZElement = document.getElementById("displacement-z");
+const longitudeElement = document.getElementById("longitude");
+const latitudeElement = document.getElementById("latitude");
+const altitudeElement = document.getElementById("altitude");
+const sattelitesElement = document.getElementById("sattelites");
+const precisionElement = document.getElementById("precision");
 const connectButton = document.getElementById("connect-button");
-const pauseButton = document.getElementById("pause-button");
+const pauseChartButton = document.getElementById("pause-chart-button");
+const pauseMapButton = document.getElementById("pause-map-button");
+const autofitCheckbox = document.getElementById("autofit");
 const disconnectButton = document.getElementById("disconnect-button");
 const reconnectButton = document.getElementById("reconnect-button");
 const refreshButton = document.getElementById("refresh-button");
@@ -12,13 +22,20 @@ const rawDataElement = document.getElementById("raw-data");
 const dataDiv = document.getElementById("data-wrapper");
 
 ws = undefined;
-dataPoints = [];
+dataPoints = new Object();
+dataPoints.yaw = [];
+dataPoints.pitch = [];
+dataPoints.roll = [];
 dataPointsCache = [];
-paused = false;
+chartPaused = false;
+mapPaused = false;
+var map;
+var path = [];
+var polyline;
 
-const MAXDATAPOINTS = 200;
+const MAXDATAPOINTS = 400;
 const MAXMESSAGES = 10;
-const DATAPOINTCACHESIZE = 5;
+const DATAPOINTCACHESIZE = 2;
 
 let onopen = function onopen() {
   ws.send(JSON.stringify({ GET: "SERIALPORTS" }));
@@ -39,13 +56,34 @@ let onclose = function onclose(err) {
   LogMessage(Time(), `Disconnected from server: ${err}`);
 };
 
+function initMap() {
+  map = new google.maps.Map(document.getElementById('map'), {
+    center: {lat: 51.5220, lng: -3.2099},
+    zoom: 15
+  });
+}
+
 var chart = new CanvasJS.Chart("chartContainer", {
   exportEnabled: true,
+  axisY: {
+    minimum: -100,
+    maximum: 100
+  },
   data: [{
     type: "spline",
     markerSize: 0,
-    dataPoints: dataPoints 
-  }]
+    dataPoints: dataPoints.yaw,
+  },
+  {
+    type: "spline",
+    markerSize: 0,
+    dataPoints: dataPoints.pitch,
+  },
+  {
+    type: "spline",
+    markerSize: 0,
+    dataPoints: dataPoints.roll,
+  }],
 });
 chart.render();
 
@@ -83,12 +121,23 @@ let onmessage = function onmessage(event) {
       LogMessage(Time(), message.DATA);
     break;  
     case "DATA":
-      LogMessage(message.DATA.TIME, "Recieved data: " + message.DATA.VALUES);
-      if (!paused)
-        PlotData(message.DATA.VALUES);
+      LogMessage(Time(), "Recieved data packet: " + GetDataType(message.DATA.DATATYPE));
+      if (!chartPaused && message.DATA.DATATYPE == 0)
+        PlotMPUData(message.DATA);
+      if (!mapPaused && message.DATA.DATATYPE == 1)
+        PlotGPSData(message.DATA);
     break;  
   }
 };
+
+function GetDataType(type) {
+  switch (type) {
+    case 0:
+      return "MPU6050 PACKET";
+    case 1:
+      return "GPS PACKET";
+  }
+}
 
 function LogMessage(time, message) {
   let strings = rawDataElement.innerHTML.split('\n');
@@ -98,18 +147,56 @@ function LogMessage(time, message) {
   rawDataElement.scrollTop = rawDataElement.scrollHeight;
 }
 
-function PlotData(data) {
-  data = data.split(",");
-  data.forEach((value) => {if (parseFloat(value) == NaN) return}); //CHECK FOR INVALID LINES
-  let value = { x: parseInt(data[0]), y: parseFloat(data[1])};
-  dataPointsCache.push(value);
-  if (parseInt(maxAltitudeElement.innerHTML) < value.y) maxAltitudeElement.innerHTML = value.y;
+function PlotGPSData(DATA) {
+  longitudeElement.innerHTML = DATA.LONGITUDE.toFixed(4);
+  latitudeElement.innerHTML = DATA.LATITUDE.toFixed(4);
+  altitudeElement.innerHTML = DATA.ALTITUDE.toFixed(1);
+  sattelitesElement.innerHTML = DATA.SATTELITES;
+  precisionElement.innerHTML = DATA.PRECISION;
+
+  path.push({lat: DATA.LATITUDE, lng: DATA.LONGITUDE});
+  if (polyline) polyline.setMap(null);
+  polyline = new google.maps.Polyline({
+    path: path,
+    geodesic: true,
+    strokeColor: '#FF0000',
+    strokeOpacity: 1.0,
+    strokeWeight: 2
+  });
+  polyline.setMap(map);
+
+  if (autofitCheckbox.checked) {
+    var bounds = new google.maps.LatLngBounds();
+    path.forEach((value) => {
+      bounds.extend(new google.maps.LatLng(value.lat, value.lng));
+    })
+    map.fitBounds(bounds, 200);
+  }
+}
+
+function PlotMPUData(DATA) {
+  //let value = { x: DATA.TIME / 1000, y1: DATA.ROTATION.YAW, y2: DATA.ROTATION.PITCH};
+  //if (parseInt(maxAltitudeElement.innerHTML) < value.y) maxAltitudeElement.innerHTML = value.y;
+  dataPointsCache.push(DATA);
 
   if (dataPointsCache.length < DATAPOINTCACHESIZE) return; 
 
-  while (dataPoints.length > MAXDATAPOINTS - DATAPOINTCACHESIZE) dataPoints.shift();
+  dataPointsCache.forEach((value) => {
+    dataPoints.yaw.push({ x: DATA.TIME / 1000, y: DATA.ROTATION.YAW});
+    dataPoints.pitch.push({ x: DATA.TIME / 1000, y: DATA.ROTATION.PITCH});
+    dataPoints.roll.push({ x: DATA.TIME / 1000, y: DATA.ROTATION.ROLL});
 
-  dataPointsCache.forEach((value) => {dataPoints.push(value)});
+    displacementXElement.innerHTML = DATA.DISP.X.toFixed(2);
+    displacementYElement.innerHTML = DATA.DISP.Y.toFixed(2);
+    displacementZElement.innerHTML = DATA.DISP.Z.toFixed(2);
+  });
+
+  while (dataPoints.yaw.length > MAXDATAPOINTS - DATAPOINTCACHESIZE) {
+    dataPoints.yaw.shift();
+    dataPoints.pitch.shift();
+    dataPoints.roll.shift();
+  };
+
   dataPointsCache = [];
   chart.render();
 }
@@ -143,15 +230,32 @@ function ClearChart() {
 }
 
 function PauseChart() {
-  pauseButton.innerHTML = "Resume";
-  pauseButton.onclick = ResumeChart;
-  paused = true;
+  pauseChartButton.innerHTML = "Resume";
+  pauseChartButton.onclick = ResumeChart;
+  chartPaused = true;
 }
 
 function ResumeChart() {
-  pauseButton.innerHTML = "Pause";
-  pauseButton.onclick = PauseChart;
-  paused = false;
+  pauseChartButton.innerHTML = "Pause";
+  pauseChartButton.onclick = PauseChart;
+  chartPaused = false;
+}
+
+function ClearMap() {
+  path.length = 0;
+  if (polyline) polyline.setMap(null);
+}
+
+function PauseMap() {
+  pauseMapButton.innerHTML = "Resume";
+  pauseMapButton.onclick = ResumeMap;
+  mapPaused = true;
+}
+
+function ResumeMap() {
+  pauseMapButton.innerHTML = "Pause";
+  pauseMapButton.onclick = PauseMap;
+  mapPaused = false;
 }
 
 function ShowErrorMessage(msg) {

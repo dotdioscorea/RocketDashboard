@@ -28,9 +28,10 @@
       <br>
       <div id="data-wrapper" style="display: block;">
         <div id="live-data">
+          <h1>Rotation</h1>
           <div id="chart">
             <div id="chartContainer" style="height: 300px; width: 800px;"></div>
-            <button id="pause-button" onclick="PauseChart()">Pause</button>
+            <button id="pause-chart-button" onclick="PauseChart()">Pause</button>
             <button style="display: inline;" id="clear-chart-button" onclick="ClearChart()">Clear</button>
           </div>
           <br>
@@ -38,6 +39,35 @@
             <span>Max altitude: </span>
             <textarea rows="1" id="max-altitude" READONLY style="width: 50px; resize: none;">0</textarea>
             <span>m</span>
+          </div>
+          <div>
+            <span>Displacement: </span>
+            <textarea rows="1" id="displacement-x" READONLY style="width: min-content; resize: none;">0</textarea>
+            <span>m</span>
+            <textarea rows="1" id="displacement-y" READONLY style="width: min-content; resize: none;">0</textarea>
+            <span>m</span>
+            <textarea rows="1" id="displacement-z" READONLY style="width: min-content; resize: none;">0</textarea>
+            <span>m</span>
+          </div>
+          <div>
+            <h1>GPS</h1>
+            <span>Longitude: </span>
+            <textarea rows="1" id="longitude" READONLY style="width: 70px; resize: none;">0</textarea>
+            <span>Latitude: </span>
+            <textarea rows="1" id="latitude" READONLY style="width: 70px; resize: none;">0</textarea>
+            <span>Altitude: </span>
+            <textarea rows="1" id="altitude" READONLY style="width: 40px; resize: none;">0</textarea>
+            <span>Sattelites: </span>
+            <textarea rows="1" id="sattelites" READONLY style="width: 15px; resize: none;">0</textarea>
+            <span>Precision: </span>
+            <textarea rows="1" id="precision" READONLY style="width: 34px; resize: none;">0</textarea>
+          </div>
+          <div id="mapContainer" style="width: 800px;">
+            <div id="map" style="height: 400px;"></div>
+            <button id="pause-map-button" onclick="PauseMap()">Pause</button>
+            <button style="display: inline;" id="clear-map-button" onclick="ClearMap()">Clear</button>
+            <span> Autofit path: </span>
+            <input type="checkbox" id="autofit" checked="checked"/>
           </div>
         </div>
         <div id="3d-plot">
@@ -47,5 +77,6 @@
     </main>
     <script src="https://canvasjs.com/assets/script/canvasjs.min.js"></script> 
     <script src="script.js"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBN1RN-iKTNmTfNAQNtLo2s9wiOhUTmZwA&callback=initMap" async defer></script>
   </body>
 </html>

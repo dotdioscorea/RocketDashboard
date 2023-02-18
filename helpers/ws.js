@@ -52,7 +52,7 @@ function informPortConnect() {
 
 function pushData (data) {
   ws.clients.forEach(async (client) => {
-    client.send(JSON.stringify({PUSH: "DATA", DATA: {TIME: Time(), VALUES: data}}))
+    client.send(JSON.stringify({PUSH: "DATA", DATA: data}))
   })
 }
 
